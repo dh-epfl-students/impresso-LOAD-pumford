@@ -23,6 +23,9 @@ public class SystemSettings {
     // the file should contain one word per line
     public static String stopwordlist = folder + "stopwords_english.txt";
     
+    // Changing to add a stopwords list for each of the languages in impresso
+    public static String stopwordListFr, stopwordListDe, stopwordListLu;
+    
     // The program is designed to only process pages (documents) that contain annotations.
     // To do this, it will scan all annotations and extract the IDs of pages. They will also be stored
     // in a file so that this process does not have to be repeated when the program is run again on
@@ -49,17 +52,27 @@ public class SystemSettings {
     public static String MongoCollectionSentences = "<sentences>";        // collection of sentences
     public static String MongoCollectionAnnotations = "<annotations>";    // collection of annotations
     
+    // Solr database, single database with both the Words and Annotations
+    public static String SolrDBname = "<name of impresso database>";
+    
     // names of names entity classes in the mongoDB collection annotation
+    // For the impresso DB we will be using PER and LOC
     public static final String dat = "TIM";
     public static final String loc = "LOC";
     public static final String act = "PER";
     public static final String org = "ORG";
-    
+        
     // mongoDB collection value identifiers in collection sentences
     public static String mongoIdentSentence_id = "_id";                            // handle for sentence IDs
     public static String mongoIdentSentence_pageId = "WP_page_id";                // handle for document IDs
     public static String mongoIdentSentence_sentenceId = "sen_number_page";        // handle for sentenceID by page
     public static String mongoIdentSentence_content = "content";                // handle for sentence content
+    
+    //Solr DB value identifiers(article id ?)
+    public static String solrIdentWord_id = "_id"; //id of the word in entire collection
+    public static String solrIdentWord_pageId = "doc_id";
+    public static String solrIdentWord_wordId = "word_number_id";
+    public static String solrIdentWord_content = "content"; //Need to think of the distance relation based on word vs sentence and implications of this
     
     // mongoDB collection value identifiers in collection annotations
     public static String mongoIdentAnnotation_id = "_id";
