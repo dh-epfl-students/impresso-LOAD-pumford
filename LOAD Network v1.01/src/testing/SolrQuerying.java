@@ -21,7 +21,7 @@ public class SolrQuerying {
 		
 		try {
 		    QueryRequest queryRequest = new QueryRequest(solrQuery);
-		    queryRequest.setBasicAuthCredentials("guest_reader","xsBx8NnodUKH");
+		    queryRequest.setBasicAuthCredentials("guest_reader","password");
 		    QueryResponse solrResponse = queryRequest.process(client);
 		    System.out.println(solrResponse);
 		    System.out.println("Total Documents : "+solrResponse.getResults().getNumFound());
