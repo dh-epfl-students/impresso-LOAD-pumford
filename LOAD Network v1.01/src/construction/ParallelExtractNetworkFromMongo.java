@@ -37,7 +37,7 @@ import gnu.trove.map.hash.TObjectIntHashMap;
 import gnu.trove.set.hash.TIntHashSet;
 
 /**
- * Creation of a LOAD network from a document collection with named entity annotations stored in a mongoDB
+ * Creation of a LOAD network from a document collection with named entity annotations stored in a Solr DB 
  * 
  * Run main method to build a LOAD graph from a document collection. Change settings in package settings.
  * 
