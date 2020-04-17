@@ -19,6 +19,8 @@ import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.ListObjectsV2Request;
+import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.fasterxml.jackson.databind.*;
@@ -33,9 +35,9 @@ public class S3Querying {
 
 		AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
 		
-		// Set S3 Client Endpoint to Symphony
+		// Set S3 Client Endpoint
 
-        AwsClientBuilder.EndpointConfiguration symphonyEndpoint = new AwsClientBuilder.EndpointConfiguration(
+        AwsClientBuilder.EndpointConfiguration switchEndpoint = new AwsClientBuilder.EndpointConfiguration(
                 "https://os.zhdk.cloud.switch.ch","");
         
     	// Set signer type and http scheme
@@ -44,7 +46,7 @@ public class S3Querying {
 		        conf.setProtocol(Protocol.HTTPS);
                 
         AmazonS3 S3Client = AmazonS3ClientBuilder.standard()
-                .withEndpointConfiguration(symphonyEndpoint)
+                .withEndpointConfiguration(switchEndpoint)
                 .withCredentials(new AWSStaticCredentialsProvider(credentials))
                 .withClientConfiguration(conf)
                 .withPathStyleAccessEnabled(true)
@@ -58,23 +60,19 @@ public class S3Querying {
             /*
             * List of buckets and objects in our account
             */
-            System.out.println("Listing buckets and objects");
-            for (Bucket bucket : S3Client.listBuckets())
-            {
-              System.out.println(" - " + bucket.getName() +" "
-                + "(owner = " + bucket.getOwner()
-                + " "
-                + "(creationDate = " + bucket.getCreationDate());
-              ObjectListing objectListing = S3Client.listObjects(new ListObjectsRequest()
-                .withBucketName(bucket.getName()));
-              for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) 
+	          String bucketName = "processed-canonical-data";
+	          String prefix = "/linguistic-processing/2020-03-11/";
+	
+	          ListObjectsV2Request req = new
+	          ListObjectsV2Request().withBucketName(bucketName);
+	          ListObjectsV2Result result = S3Client.listObjectsV2(req);
+              for (S3ObjectSummary objectSummary : result.getObjectSummaries()) 
               {
                 System.out.println(" --- " + objectSummary.getKey() +" "
                 + "(size = " + objectSummary.getSize() + ")" +" "
                 + "(eTag = " + objectSummary.getETag() + ")");
                 System.out.println();
               }
-            }
           }
           catch (AmazonServiceException ase)
           {
