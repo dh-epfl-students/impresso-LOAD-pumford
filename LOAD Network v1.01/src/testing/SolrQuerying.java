@@ -18,18 +18,19 @@ public class SolrQuerying {
 	
 	public static void main(String[] args) {
 		Properties prop=new Properties();
-		String propFilePath = "resources/config.properties";
+		String propFilePath = "../resources/config.properties";
 		
-		FileInputStream inputStream = new FileInputStream(propFilePath);
-		 
-		if (inputStream != null) {
+		FileInputStream inputStream;
+		try {
+			inputStream = new FileInputStream(propFilePath);
 			prop.load(inputStream);
-		} else {
-			throw new FileNotFoundException("property file '" + propFilePath + "' not found in the classpath");
+			
+		} catch (IOException e1) {
+			e1.printStackTrace();
 		}
-		
-		String solrURL = "https://solrdev.dhlab.epfl.ch/solr/impresso_dev";
-		HttpSolrClient client = new HttpSolrClient.Builder(solrURL).build();
+		 
+	    System.out.println(prop.getProperty("solrDBName"));
+		HttpSolrClient client = new HttpSolrClient.Builder(prop.getProperty("solrDBName")).build();
 		SolrQuery solrQuery = new SolrQuery();
 		solrQuery.setQuery("*:*");
 		solrQuery.set("fl","*");
@@ -37,7 +38,8 @@ public class SolrQuerying {
 		
 		try {
 		    QueryRequest queryRequest = new QueryRequest(solrQuery);
-		    queryRequest.setBasicAuthCredentials("guest_reader","password");
+		    System.out.println(System.getenv("Solrpassword"));
+		    queryRequest.setBasicAuthCredentials(prop.getProperty("solrUserName"),System.getenv("solrPassword"));
 		    QueryResponse solrResponse = queryRequest.process(client);
 		    System.out.println(solrResponse);
 		    System.out.println("Total Documents : "+solrResponse.getResults().getNumFound());

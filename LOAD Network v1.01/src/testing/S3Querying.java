@@ -2,7 +2,10 @@ package testing;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.List;
+import java.util.Properties;
 
 import com.amazonaws.*;
 import com.amazonaws.auth.AWSCredentials;
@@ -30,15 +33,29 @@ import com.fasterxml.jackson.annotation.*;
 public class S3Querying {
 
 	public static void main(String[] args) {
-		String accessKey = "XXXX";
-		String secretKey = "XXXX";
+		Properties prop=new Properties();
+		String propFilePath = "../resources/config.properties";
+		
+		FileInputStream inputStream;
+		try {
+			inputStream = new FileInputStream(propFilePath);
+			prop.load(inputStream);
+			
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		 
+		
+		
+		String accessKey = System.getenv("s3Accesskey");
+		String secretKey = System.getenv("s3Secretkey");
 
 		AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
 		
 		// Set S3 Client Endpoint
 
         AwsClientBuilder.EndpointConfiguration switchEndpoint = new AwsClientBuilder.EndpointConfiguration(
-                "https://os.zhdk.cloud.switch.ch","");
+                prop.getProperty("s3BaseName"),"");
         
     	// Set signer type and http scheme
         ClientConfiguration conf = new ClientConfiguration();
@@ -60,8 +77,7 @@ public class S3Querying {
             /*
             * List of buckets and objects in our account
             */
-	          String bucketName = "processed-canonical-data";
-	          String prefix = "/linguistic-processing/2020-03-11/";
+	          String bucketName = "processed-canonical-data"; //Name of the bucket
 	
 	          ListObjectsV2Request req = new
 	          ListObjectsV2Request().withBucketName(bucketName);
