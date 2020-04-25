@@ -1,4 +1,4 @@
-package construction;
+package impresso;
 
 import org.apache.solr.common.SolrDocument;
 

@@ -1,8 +1,12 @@
-package construction;
+package impresso;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.io.FileInputStream;
 
@@ -10,9 +14,11 @@ import java.io.FileInputStream;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.SolrQuery.ORDER;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.request.QueryRequest;
 import org.apache.solr.common.SolrDocumentList;
+import org.apache.solr.common.params.CursorMarkParams;
 
 
 public class SolrReader {
@@ -21,7 +27,7 @@ public class SolrReader {
 		
 	}
 	
-	public Set<String> getContentItemIDs(String newspaperID) {
+	public List<String> getContentItemIDs(String newspaperID) {
 		Properties prop=new Properties();
 		String propFilePath = "../resources/config.properties";
 		
@@ -38,16 +44,28 @@ public class SolrReader {
 		SolrQuery solrQuery = new SolrQuery();
 		solrQuery.setQuery("meta_journal_s:"+newspaperID);
 		solrQuery.set("fl","id");
-		solrQuery.setRows(100);
-		
-		Set<String> solrIds = null;
+		solrQuery.addSort("id", ORDER.asc);  // Pay attention to this line
+		solrQuery.setRows(10000);
+		List<String> solrIds = new ArrayList<>();
+	    QueryRequest queryRequest = new QueryRequest(solrQuery);
+	    String cursorMark = CursorMarkParams.CURSOR_MARK_START;
+	    boolean done = false;
 		try {
-		    QueryRequest queryRequest = new QueryRequest(solrQuery);
-		    queryRequest.setBasicAuthCredentials(prop.getProperty("solrUserName"),System.getenv("solrPassword"));
-		    QueryResponse solrResponse = queryRequest.process(client);
-		    solrIds = solrResponse.getResults()
-		    		  .stream().map(x -> (String) x.get("id"))
-		    		  .collect(Collectors.toSet());
+			while(!done) {
+			    solrQuery.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
+			    queryRequest.setBasicAuthCredentials(prop.getProperty("solrUserName"),System.getenv("solrPassword"));
+			    QueryResponse solrResponse = queryRequest.process(client);
+			    solrIds.addAll(solrResponse.getResults()
+			    		  .stream().map(x -> (String) x.get("id"))
+			    		  .collect(Collectors.toList()));
+			    String nextCursorMark = solrResponse.getNextCursorMark();
+			    System.out.println(cursorMark);
+			    if (cursorMark.equals(nextCursorMark)) {
+			        done = true;
+			    }
+			    cursorMark = nextCursorMark;
+			}
+
 		} catch (SolrServerException e) {
 		    e.printStackTrace();
 		} catch (IOException e) {
