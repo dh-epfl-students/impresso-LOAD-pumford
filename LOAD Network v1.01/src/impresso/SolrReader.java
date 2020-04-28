@@ -42,14 +42,15 @@ public class SolrReader {
 		 
 		HttpSolrClient client = new HttpSolrClient.Builder(prop.getProperty("solrDBName")).build();
 		SolrQuery solrQuery = new SolrQuery();
-		solrQuery.setQuery("meta_journal_s:"+newspaperID);
+		solrQuery.setQuery("meta_journal_s:"+newspaperID + "AND item_type_s:(ar OR ob OR page)"); //Sets query for the newspaper and limits the item_type
 		solrQuery.set("fl","id");
-		solrQuery.addSort("id", ORDER.asc);  // Pay attention to this line
+		solrQuery.addSort("id", ORDER.asc);  
 		solrQuery.setRows(10000);
 		List<String> solrIds = new ArrayList<>();
 	    QueryRequest queryRequest = new QueryRequest(solrQuery);
 	    String cursorMark = CursorMarkParams.CURSOR_MARK_START;
 	    boolean done = false;
+	    
 		try {
 			while(!done) {
 			    solrQuery.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
@@ -59,7 +60,6 @@ public class SolrReader {
 			    		  .stream().map(x -> (String) x.get("id"))
 			    		  .collect(Collectors.toList()));
 			    String nextCursorMark = solrResponse.getNextCursorMark();
-			    System.out.println(cursorMark);
 			    if (cursorMark.equals(nextCursorMark)) {
 			        done = true;
 			    }
