@@ -4,8 +4,10 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.amazonaws.*;
 import com.amazonaws.auth.AWSCredentials;
@@ -18,13 +20,25 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.Bucket;
 import com.amazonaws.services.s3.model.CannedAccessControlList;
+import com.amazonaws.services.s3.model.CompressionType;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.InputSerialization;
+import com.amazonaws.services.s3.model.JSONInput;
+import com.amazonaws.services.s3.model.JSONOutput;
+import com.amazonaws.services.s3.model.ExpressionType;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.OutputSerialization;
 import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.amazonaws.services.s3.model.SelectObjectContentEvent;
+import com.amazonaws.services.s3.model.SelectObjectContentEventStream;
+import com.amazonaws.services.s3.model.SelectObjectContentEventVisitor;
+import com.amazonaws.services.s3.model.SelectObjectContentRequest;
+import com.amazonaws.services.s3.model.SelectObjectContentResult;
+import com.amazonaws.services.s3.model.SelectRecordsInputStream;
 import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.core.*;
@@ -75,20 +89,72 @@ public class S3Querying {
         
         try { 
             /*
-            * List of buckets and objects in our account
             */
 	          String bucketName = "processed-canonical-data"; //Name of the bucket
-	
+	          String prefix = "linguistic-processing/2020-03-11/";
+	          
 	          ListObjectsV2Request req = new
-	          ListObjectsV2Request().withBucketName(bucketName);
+	          ListObjectsV2Request().withBucketName(bucketName).withPrefix(prefix).withDelimiter("/").withMaxKeys(1);
 	          ListObjectsV2Result result = S3Client.listObjectsV2(req);
-              for (S3ObjectSummary objectSummary : result.getObjectSummaries()) 
+	          String key = result.getObjectSummaries().get(0).getKey();
+	          
+	          //Testing selecting the object's content of a particular bucket 
+	          SelectObjectContentRequest request = new SelectObjectContentRequest();
+	          request.setBucketName(bucketName);
+	          request.setKey(key);
+	          request.setExpression("SELECT TOP 1 FROM S3Object s");
+	          request.setExpressionType(ExpressionType.SQL);
+
+	          InputSerialization inputSerialization = new InputSerialization();
+	          inputSerialization.setJson(new JSONInput());
+	          inputSerialization.setCompressionType(CompressionType.BZIP2);
+	          request.setInputSerialization(inputSerialization);
+	          
+	          OutputSerialization outputSerialization = new OutputSerialization();
+	          outputSerialization.setJson(new JSONOutput());
+	          request.setOutputSerialization(outputSerialization);
+	          
+	          final AtomicBoolean isResultComplete = new AtomicBoolean(false);
+
+	          //SelectObjectContentResult results = S3Client.selectObjectContent(request);
+	          
+	          GetObjectRequest object_request = new GetObjectRequest(bucketName, key);
+	          S3Client.getObject(object_request);
+	          /*
+	          SelectRecordsInputStream resultInputStream = results.getPayload().getRecordsInputStream(new SelectObjectContentEventVisitor() {
+		                  @Override
+		                  public void visit(SelectObjectContentEvent.StatsEvent event)
+		                  {
+		                      System.out.println(
+		                              "Received Stats, Bytes Scanned: " + event.getDetails().getBytesScanned()
+		                                      +  " Bytes Processed: " + event.getDetails().getBytesProcessed());
+		                  }
+		
+
+		                  @Override
+		                  public void visit(SelectObjectContentEvent.EndEvent event)
+		                  {
+		                      isResultComplete.set(true);
+		                      System.out.println("Received End Event. Result is complete.");
+		                  }
+		              }
+		      );*/
+	          
+	          //Select Records from the Input Stream
+	          
+	          
+              /*for (S3ObjectSummary objectSummary : result.getObjectSummaries()) 
               {
+            	if(objectSummary.getKey() == "linguistic-processing/2020-03-11/JDG-1880.ling.annotation.jsonl.bz2") {
+            		
+            	}
+            	  
+            	  
                 System.out.println(" --- " + objectSummary.getKey() +" "
                 + "(size = " + objectSummary.getSize() + ")" +" "
                 + "(eTag = " + objectSummary.getETag() + ")");
                 System.out.println();
-              }
+              }*/
           }
           catch (AmazonServiceException ase)
           {
