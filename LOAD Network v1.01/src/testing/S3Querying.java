@@ -1,13 +1,18 @@
 package testing;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Properties;
+import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 
 import com.amazonaws.*;
 import com.amazonaws.auth.AWSCredentials;
@@ -30,6 +35,7 @@ import com.amazonaws.services.s3.model.ExpressionType;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.OutputSerialization;
+import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
@@ -46,7 +52,7 @@ import com.fasterxml.jackson.annotation.*;
 
 public class S3Querying {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		Properties prop=new Properties();
 		String propFilePath = "../resources/config.properties";
 		
@@ -87,6 +93,8 @@ public class S3Querying {
         System.out.println(" Connection to the S3 ");
         System.out.println("===========================================\n");
         
+        
+        S3Object fullObject = null;
         try { 
             /*
             */
@@ -119,8 +127,13 @@ public class S3Querying {
 	          //SelectObjectContentResult results = S3Client.selectObjectContent(request);
 	          
 	          GetObjectRequest object_request = new GetObjectRequest(bucketName, key);
-	          S3Client.getObject(object_request);
-	          /*
+	          fullObject = S3Client.getObject(object_request);
+	          
+              System.out.println("Content-Type: " + fullObject.getObjectMetadata().getContentType());
+              System.out.println("Content: ");
+              displayTextInputStream(fullObject.getObjectContent());
+
+              /*
 	          SelectRecordsInputStream resultInputStream = results.getPayload().getRecordsInputStream(new SelectObjectContentEventVisitor() {
 		                  @Override
 		                  public void visit(SelectObjectContentEvent.StatsEvent event)
@@ -170,8 +183,24 @@ public class S3Querying {
             System.out.println("Caught an AmazonClientException, which means the client encountered "
             + "a serious internal problem while trying to communicate with S3 such as not being able to access the network.");
             System.out.println("Error Message: " + ace.getMessage());
+          } catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}        finally {
+              // To ensure that the network connection doesn't remain open, close any open input streams.
+              if (fullObject != null) {
+                  fullObject.close();
+              }
           }
 
 	}
-
+	private static void displayTextInputStream(InputStream input) throws IOException {
+        // Read the text input stream one line at a time and display each line.
+		Scanner fileIn = new Scanner(new  BZip2CompressorInputStream(input));
+	    if (null != fileIn) {
+	        while (fileIn.hasNext()) {
+	            System.out.println("Line: " + fileIn.nextLine());
+	        }
+	    }
+    }
 }

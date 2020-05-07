@@ -4,6 +4,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.Protocol;
 import com.amazonaws.auth.AWSCredentials;
@@ -67,35 +69,53 @@ public class S3Reader {
         
         ListObjectsV2Request req = new
         ListObjectsV2Request().withBucketName(bucketName).withPrefix(prefix).withDelimiter("/");
-        ListObjectsV2Result result = S3Client.listObjectsV2(req);
         
-        for (S3ObjectSummary objectSummary : result.getObjectSummaries()) 
+        try{
+        	ListObjectsV2Result result = S3Client.listObjectsV2(req);
+        
+	        for (S3ObjectSummary objectSummary : result.getObjectSummaries()) 
+	        {
+	      	  
+	      	  
+	          System.out.println(" --- " + objectSummary.getKey() +" "
+	          + "(size = " + objectSummary.getSize() + ")" +" "
+	          + "(eTag = " + objectSummary.getETag() + ")");
+	          System.out.println();
+	          
+	          GetObjectRequest object_request = new GetObjectRequest(bucketName, objectSummary.getKey());
+	          S3Client.getObject(object_request);
+	        }
+	
+	        
+	        
+	        /*
+	        //Example for 
+	        InputStream fin = Files.newInputStream(Paths.get("archive.tar.bz2"));
+	        BufferedInputStream in = new BufferedInputStream(fin);
+	        OutputStream out = Files.newOutputStream(Paths.get("archive.tar"));
+	        BZip2CompressorInputStream bzIn = new BZip2CompressorInputStream(in);
+	        final byte[] buffer = new byte[prop.getProperty("bufferSize")];
+	        int n = 0;
+	        while (-1 != (n = bzIn.read(buffer))) {
+	            out.write(buffer, 0, n);
+	        }
+	        out.close();
+	        bzIn.close();*/
+        }
+        catch (AmazonServiceException ase)
         {
-      	  
-      	  
-          System.out.println(" --- " + objectSummary.getKey() +" "
-          + "(size = " + objectSummary.getSize() + ")" +" "
-          + "(eTag = " + objectSummary.getETag() + ")");
-          System.out.println();
-          
-          GetObjectRequest object_request = new GetObjectRequest(bucketName, objectSummary.getKey());
-          S3Client.getObject(object_request);
+          System.out.println("Caught an AmazonServiceException, which means your request made it to S3, but was rejected with an error response for some reason.");
+          System.out.println("Error Message:    " + ase.getMessage());
+          System.out.println("HTTP Status Code: " + ase.getStatusCode());
+          System.out.println("AWS Error Code: " + ase.getErrorCode());
+          System.out.println("Error Type: " + ase.getErrorType());
+          System.out.println("Request ID: " + ase.getRequestId());
         }
-
-        
-        
-        /*
-        //Example for 
-        InputStream fin = Files.newInputStream(Paths.get("archive.tar.bz2"));
-        BufferedInputStream in = new BufferedInputStream(fin);
-        OutputStream out = Files.newOutputStream(Paths.get("archive.tar"));
-        BZip2CompressorInputStream bzIn = new BZip2CompressorInputStream(in);
-        final byte[] buffer = new byte[prop.getProperty("bufferSize")];
-        int n = 0;
-        while (-1 != (n = bzIn.read(buffer))) {
-            out.write(buffer, 0, n);
+        catch (AmazonClientException ace)
+        {
+          System.out.println("Caught an AmazonClientException, which means the client encountered "
+          + "a serious internal problem while trying to communicate with S3 such as not being able to access the network.");
+          System.out.println("Error Message: " + ace.getMessage());
         }
-        out.close();
-        bzIn.close();*/
 	}
 }
