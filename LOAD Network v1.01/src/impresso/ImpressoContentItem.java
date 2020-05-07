@@ -3,6 +3,9 @@ package impresso;
 import java.util.List;
 
 import org.apache.solr.common.SolrDocument;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import construction.Annotation;
 
 public class ImpressoContentItem {
@@ -11,7 +14,9 @@ public class ImpressoContentItem {
 	private String id;
 	private String content_txt;
 	private String year;
-
+	private List<Token> tokens;
+	
+	
 	public ImpressoContentItem() {
 		
 	}
@@ -42,9 +47,24 @@ public class ImpressoContentItem {
 		return;
 	}
 	
+	public void injectTokens(JSONArray tokenArray) {
+		int length = tokenArray.length();
+		for(int i=0; i<length; i++) {
+			  JSONObject token = tokenArray.getJSONObject(i);
+			  tokens.add(new Token(token));
+		}
+		return;
+	}
+	
 	/*public List<Annotation> getEntities(){
-		
-		
+
+	}
+	
+	public List<Annotation> getSentences(){
 		
 	}*/
+	
+	public List<Token> getTokens(){
+		return tokens;
+	}
 }
