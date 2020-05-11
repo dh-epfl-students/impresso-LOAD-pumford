@@ -7,16 +7,19 @@ public class Token {
 	private String lemma;
 	private String pos;
 	private String surface;
-	private int location;
+	private String language;
+	private int offset;
 	
 	public Token() {
 		
 	}
-	public Token(JSONObject token) {
+	public Token(JSONObject token, String tokLanguage) {
 		pos = token.getString("p");
 		lemma = token.getString("l");
-		location = token.getInt("o");
-		}
+		offset = token.getInt("o");
+		surface = token.getString("t");
+		language = tokLanguage;
+	}
 	
 	public String getLemma() {
 		return lemma;
@@ -26,7 +29,14 @@ public class Token {
 		return pos;
 	}
 	
-	public int getLocaiton() {
-		return location;
+	public int getOffset() {
+		return offset;
+	}
+	
+	public String getSurface() {
+		return surface;
+	}
+	public String getLanguage() {
+		return language;
 	}
 }

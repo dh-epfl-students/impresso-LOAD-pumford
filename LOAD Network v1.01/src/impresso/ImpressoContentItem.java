@@ -1,5 +1,6 @@
 package impresso;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.solr.common.SolrDocument;
@@ -13,7 +14,7 @@ public class ImpressoContentItem {
 	private String language;
 	private String id;
 	private String content_txt;
-	private String year;
+	private Integer year;
 	private List<Token> tokens;
 	
 	
@@ -36,22 +37,19 @@ public class ImpressoContentItem {
 			break;
 		}
 		
-		year = (String) document.getFieldValue("meta_year_i");
-			
+		year = (Integer) document.getFieldValue("meta_year_i");
+		tokens = new ArrayList<Token>();
 	}
 	
-	public void printProperties() {
-		System.out.println(this.id);
-		System.out.println(this.language);
-		System.out.println(this.content_txt);
-		return;
-	}
-	
-	public void injectTokens(JSONArray tokenArray) {
+	public void injectTokens(JSONArray tokenArray, String tokLang) {
 		int length = tokenArray.length();
+		System.out.print(tokenArray);
 		for(int i=0; i<length; i++) {
 			  JSONObject token = tokenArray.getJSONObject(i);
-			  tokens.add(new Token(token));
+			  if(tokLang == null) {
+				  tokLang = language;
+			  }
+			  tokens.add(new Token(token, tokLang));
 		}
 		return;
 	}
@@ -67,4 +65,18 @@ public class ImpressoContentItem {
 	public List<Token> getTokens(){
 		return tokens;
 	}
+	
+	public String getlanguage() {
+		return language;
+	}
+	public String getId() {
+		return id;
+	}
+	public String getContent_txt() {
+		return content_txt;
+	}
+	public Integer getYear() {
+		return year;
+	}
+	
 }

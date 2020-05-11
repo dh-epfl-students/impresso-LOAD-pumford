@@ -15,10 +15,12 @@ public class ClassTester {
 		//System.out.println(test.size());
 		
 		//Testing getting the contentId
-		//ImpressoContentItem test = reader.getContentItem("EXP-1933-01-16-a-i0055");
+		ImpressoContentItem test = reader.getContentItem("EXP-1933-01-16-a-i0055");
 		//test.printProperties();
 		
 		S3Reader injector = new S3Reader("EXP", "1933");
+		test = injector.injectLingusticAnnotations(test);
+		System.out.println(test.getTokens());
 	}
 
 }

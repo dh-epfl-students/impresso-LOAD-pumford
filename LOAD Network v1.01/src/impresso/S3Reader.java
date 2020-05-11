@@ -3,8 +3,11 @@ package impresso;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.json.JSONArray;
@@ -21,13 +24,12 @@ import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
-import com.amazonaws.services.s3.model.ListObjectsV2Request;
-import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 public class S3Reader {
-
+	private static Cache<String, JSONObject> newspaperCache;
 	
 	public S3Reader() {
 		
@@ -70,10 +72,16 @@ public class S3Reader {
                 .build();
 		
 		String bucketName = "processed-canonical-data"; //Name of the bucket
-        String prefix = "linguistic-processing/2020-03-11/";
-        String keySuffix = ".ling.annotation.jsonl.bz2";
+        String prefix = "linguistic-processing/2020-03-11/"; //Name of prefix for S3
+        String keySuffix = ".ling.annotation.jsonl.bz2"; //Suffix of each BZIP2 
         
         S3Object fullObject = null;
+        
+        //Creation of a cache
+        newspaperCache = CacheBuilder.newBuilder()
+        						.expireAfterAccess(60, TimeUnit.MINUTES)
+        						.build();
+        
         try{
 	        String key = prefix + newspaperID + "-" + year + keySuffix; 
         	GetObjectRequest object_request = new GetObjectRequest(bucketName, key);
@@ -105,29 +113,32 @@ public class S3Reader {
 	}
 	
 	public ImpressoContentItem injectLingusticAnnotations(ImpressoContentItem contentItem) {
-		
-		
+		String tempId = contentItem.getId();
+		JSONObject jsonObj = newspaperCache.getIfPresent(tempId);
+    	JSONArray sents = jsonObj.getJSONArray("sents");
+    	int length = sents.length();
+    	for(int j=0; j<length; j++) {
+    	    JSONObject sentence = sents.getJSONObject(j);
+    	    //This is where the injectTokens of a ImpressoContentItem
+    	    contentItem.injectTokens(sentence.getJSONArray("tok"), sentence.getString("lg"));
+    	}
+
 		return contentItem;
 	}
 	
+	
+	
 	private static void displayTextInputStream(InputStream input) throws IOException {
-      // Read the text input stream one line at a time and display each line.
-		Scanner fileIn = new Scanner(new  BZip2CompressorInputStream(input));
-	    if (null != fileIn) {
-	        //while (fileIn.hasNext()) {
-	        	JSONObject jsonObj = new JSONObject(fileIn.nextLine());
-	        	JSONArray sents = jsonObj.getJSONArray("sents");
-	        	int length = sents.length();
-	        	for(int j=0; j<length; j++) {
-	        	    JSONObject sentence = sents.getJSONObject(j);
-	        	    JSONArray toks = sentence.getJSONArray("toks");
-		        	int sent_length = sents.length();
-		        	for(int k=0; j<sent_length; k++) {
-		        	    JSONObject tok = sentence.getJSONObject(k);
-		        	    
-		        	  }
-	        	  }
-	        //}
-	    }
+      try (// Read the text input stream one line at a time and display each line.
+		Scanner fileIn = new Scanner(new  BZip2CompressorInputStream(input))) {
+			if (null != fileIn) {
+				Map<String, JSONObject> tempMap = new HashMap<String, JSONObject>();
+			    while (fileIn.hasNext()) {
+			    	JSONObject jsonObj = new JSONObject(fileIn.nextLine());
+			    	tempMap.put(jsonObj.getString("id"), jsonObj);
+			    }
+			    newspaperCache.putAll(tempMap);
+			}
+		}
   }
 }
