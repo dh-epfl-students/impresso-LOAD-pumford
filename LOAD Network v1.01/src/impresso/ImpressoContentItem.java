@@ -16,11 +16,12 @@ public class ImpressoContentItem {
 	private String content_txt;
 	private Integer year;
 	private List<Token> tokens;
-	
+	private List<Annotation> annotations;
 	
 	public ImpressoContentItem() {
 		
 	}
+	
 	public ImpressoContentItem(SolrDocument document) {
 		id = (String) document.getFieldValue("id");
 		language = (String) document.getFieldValue("lg_s");
@@ -54,10 +55,10 @@ public class ImpressoContentItem {
 		return;
 	}
 	
-	/*public List<Annotation> getEntities(){
-
+	public List<Annotation> getEntities(){
+		return annotations;
 	}
-	
+	/*
 	public List<Annotation> getSentences(){
 		
 	}*/
@@ -79,4 +80,23 @@ public class ImpressoContentItem {
 		return year;
 	}
 	
+	private List<Annotation> buildAnnotations(SolrDocument document){
+		JSONArray entity_locs = (JSONArray) document.getFieldValue("nem_offset_plain");
+		int num_types = entity_locs.length();
+		List<Annotation> annotations = new ArrayList<Annotation>();
+		
+		for(int i=0; i < num_types; i++) {
+    	    JSONObject type = entity_locs.getJSONObject(i);
+    	    /*
+			switch(type) {
+			case "person":
+				content_txt = (String) document.getFieldValue("content_txt_fr");
+				break;
+			case "location":
+				content_txt = (String) document.getFieldValue("content_txt_de");
+				break;
+			}*/
+		}
+		return annotations;
+	}
 }

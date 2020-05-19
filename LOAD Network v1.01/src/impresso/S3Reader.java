@@ -78,9 +78,7 @@ public class S3Reader {
         S3Object fullObject = null;
         
         //Creation of a cache
-        newspaperCache = CacheBuilder.newBuilder()
-        						.expireAfterAccess(60, TimeUnit.MINUTES)
-        						.build();
+        newspaperCache = CacheBuilder.newBuilder().build();
         
         try{
 	        String key = prefix + newspaperID + "-" + year + keySuffix; 

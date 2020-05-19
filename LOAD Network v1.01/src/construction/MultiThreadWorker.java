@@ -75,7 +75,9 @@ public class MultiThreadWorker implements Runnable {
         
         
         while ( (page_id = hub.getPageID()) != null ) {
-        
+        	
+        	//using content id create impressocontentitem and use this to read from solr, then inject tokens
+        	
             annotationsPage.clear();
             edges.clear();
                 
