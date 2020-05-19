@@ -31,27 +31,16 @@ import org.apache.solr.common.params.CursorMarkParams;
 public class SolrReader {
 
 	private static final Logger LOGGER = Logger.getLogger(SolrReader.class.getName());
+	private static Properties prop;
 	
-	public SolrReader() {
-		
+	
+	public SolrReader(Properties properties) {
+		prop = properties;
 	}
 	
 	public List<String> getContentItemIDs(String newspaperID, boolean firstRead) {
 		List<String> solrIds = new ArrayList<>();
 	    String file = String.format("../%s-ids.txt", newspaperID);
-
-		Properties prop=new Properties();
-		String propFilePath = "../resources/config.properties";
-		
-		FileInputStream inputStream;
-		
-		try {
-			inputStream = new FileInputStream(propFilePath);
-			prop.load(inputStream);
-			
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
 		
 		if(firstRead) {
 			HttpSolrClient client = new HttpSolrClient.Builder(prop.getProperty("solrDBName")).build();
@@ -128,24 +117,11 @@ public class SolrReader {
 	}
 	
 	public ImpressoContentItem getContentItem(String solrId) {
-		Properties prop=new Properties();
-		String propFilePath = "../resources/config.properties";
-		
-		FileInputStream inputStream;
-		try {
-			inputStream = new FileInputStream(propFilePath);
-			prop.load(inputStream);
-			
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		
 		HttpSolrClient client = new HttpSolrClient.Builder(prop.getProperty("solrDBName")).build();
 		SolrQuery solrQuery = new SolrQuery();
 		solrQuery.setQuery("id:"+solrId);
 		solrQuery.set("fl","*");
 		solrQuery.setRows(1);
-		
 		
 		ImpressoContentItem impressoItem = null;
 		try {

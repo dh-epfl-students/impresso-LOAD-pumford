@@ -30,24 +30,13 @@ import com.google.common.cache.CacheBuilder;
 
 public class S3Reader {
 	private static Cache<String, JSONObject> newspaperCache;
+	private static Properties prop;
 	
 	public S3Reader() {
 		
 	}
 	
-	public S3Reader(String newspaperID, String year) throws IOException {
-		
-		Properties prop=new Properties();
-		String propFilePath = "../resources/config.properties";
-		
-		FileInputStream inputStream;
-		try {
-			inputStream = new FileInputStream(propFilePath);
-			prop.load(inputStream);
-			
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
+	public S3Reader(String newspaperID, String year, Properties prop) throws IOException {
 		
 		String accessKey = System.getenv("s3Accesskey");
 		String secretKey = System.getenv("s3Secretkey");
@@ -123,8 +112,7 @@ public class S3Reader {
 
 		return contentItem;
 	}
-	
-	
+
 	
 	private static void displayTextInputStream(InputStream input) throws IOException {
       try (// Read the text input stream one line at a time and display each line.
