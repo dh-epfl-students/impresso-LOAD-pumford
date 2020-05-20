@@ -10,6 +10,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import impresso.SolrReader;
+import impresso.Token;
 import impresso.ImpressoContentItem;
 import impresso.S3Reader;
 
@@ -39,21 +40,20 @@ public class ClassTester {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		
-		
+			
 		SolrReader reader = new SolrReader(prop);
-		
 
-		
-		List<String> indepluxIds = reader.getContentItemIDs("indeplux", false);
+		List<String> luxwortIds = reader.getContentItemIDs("luxwort", false);
 
 		//Testing getting the contentId
-		ImpressoContentItem test = reader.getContentItem(indepluxIds.get(4));
+		ImpressoContentItem test = reader.getContentItem(luxwortIds.get(4));
 		System.out.println(test.getContent_txt());
 		
-		//S3Reader injector = new S3Reader("EXP", "1933");
-		//test = injector.injectLingusticAnnotations(test);
-		//System.out.println(test.getTokens());
+		S3Reader injector = new S3Reader("luxwort", "1848", prop);
+		test = injector.injectLingusticAnnotations(test);
+		for(Token token: test.getTokens()) {
+			System.out.println(token.getPOS());
+		}
 	}
 
 }

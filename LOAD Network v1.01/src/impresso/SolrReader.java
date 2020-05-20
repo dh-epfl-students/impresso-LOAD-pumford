@@ -128,7 +128,7 @@ public class SolrReader {
 		    QueryRequest queryRequest = new QueryRequest(solrQuery);
 		    queryRequest.setBasicAuthCredentials(prop.getProperty("solrUserName"),System.getenv("solrPassword"));
 		    SolrDocumentList solrResponse = queryRequest.process(client).getResults();
-		    impressoItem = new ImpressoContentItem(solrResponse.get(0)); //Get the only item of the list
+		    impressoItem = new ImpressoContentItem(solrResponse.get(0), prop); //Get the only item of the list
 		} catch (SolrServerException e) {
 		    e.printStackTrace();
 		} catch (IOException e) {

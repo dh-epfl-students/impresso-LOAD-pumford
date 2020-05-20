@@ -1,7 +1,9 @@
 package impresso;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.solr.common.SolrDocument;
 import org.json.JSONArray;
@@ -17,12 +19,13 @@ public class ImpressoContentItem {
 	private Integer year;
 	private List<Token> tokens;
 	private List<Annotation> annotations;
+	private static Properties prop;
 	
 	public ImpressoContentItem() {
 		
 	}
 	
-	public ImpressoContentItem(SolrDocument document) {
+	public ImpressoContentItem(SolrDocument document, Properties properties) {
 		id = (String) document.getFieldValue("id");
 		language = (String) document.getFieldValue("lg_s");
 		
@@ -40,17 +43,23 @@ public class ImpressoContentItem {
 		
 		year = (Integer) document.getFieldValue("meta_year_i");
 		tokens = new ArrayList<Token>();
+		prop = properties;
 	}
 	
 	public void injectTokens(JSONArray tokenArray, String tokLang) {
 		int length = tokenArray.length();
-		System.out.print(tokenArray);
+		String[] posTypes = prop.get("PoSTypes").toString().split(",");
+		
 		for(int i=0; i<length; i++) {
 			  JSONObject token = tokenArray.getJSONObject(i);
 			  if(tokLang == null) {
 				  tokLang = language;
 			  }
-			  tokens.add(new Token(token, tokLang));
+			  
+			  //Check to see if the token is a pos within the PoS types we would like to keep
+			  if(Arrays.stream(posTypes).anyMatch(token.getString("p")::equals)) {
+				  tokens.add(new Token(token, tokLang));
+			  }
 		}
 		return;
 	}
