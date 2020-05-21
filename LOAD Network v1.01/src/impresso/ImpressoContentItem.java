@@ -89,23 +89,4 @@ public class ImpressoContentItem {
 		return year;
 	}
 	
-	private List<Annotation> buildAnnotations(SolrDocument document){
-		JSONArray entity_locs = (JSONArray) document.getFieldValue("nem_offset_plain");
-		int num_types = entity_locs.length();
-		List<Annotation> annotations = new ArrayList<Annotation>();
-		
-		for(int i=0; i < num_types; i++) {
-    	    JSONObject type = entity_locs.getJSONObject(i);
-    	    /*
-			switch(type) {
-			case "person":
-				content_txt = (String) document.getFieldValue("content_txt_fr");
-				break;
-			case "location":
-				content_txt = (String) document.getFieldValue("content_txt_de");
-				break;
-			}*/
-		}
-		return annotations;
-	}
 }

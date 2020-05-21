@@ -33,6 +33,7 @@ import com.google.common.cache.CacheBuilder;
 
 public class S3Reader {
 	private static Cache<String, JSONObject> newspaperCache;
+	private static Cache<String, JSONObject> entityCache;
 	private static Properties prop;
 	private String year = null;
 	private static String bucketName;
@@ -76,8 +77,9 @@ public class S3Reader {
         
         try{
         	if(year != null) {	
-    	        String key = prefix + newspaperID + "-" + year + keySuffix; 
-                populateCache(key, S3Client);
+    	        String newspaperKey = prefix + newspaperID + "-" + year + keySuffix;
+    	        String entityKey = "mysql-mention-dumps/NZZ/" + newspaperID + "-" + year + "-mentions.jsonl.bz2";
+                populateCache(newspaperKey, entityKey, S3Client);
         	}
         	else {
         		String curPrefix = prefix+newspaperID; //Creates the prefix to search for
@@ -86,7 +88,7 @@ public class S3Reader {
         		for(S3ObjectSummary summary:summaries) {
         			String key = summary.getKey();
         			System.out.println(key);
-                    populateCache(key, S3Client);
+                    populateCache(key, null, S3Client);
         		}
         	}
         }
@@ -119,12 +121,26 @@ public class S3Reader {
     	    contentItem.injectTokens(sentence.getJSONArray("tok"), sentence.getString("lg"));
     	}
 
+		/*
+		 * WHILE THE ENTITIES ARE BEING DUMPED TO THE S3 BUCKET
+		 * SHOULD NOT EXIST IN THE FINAL IMPLEMENTATION
+		 */
+    	
+    	jsonObj = entityCache.getIfPresent(tempId);
+    	JSONArray mentions = jsonObj.getJSONArray("mentions");
+    	length = sents.length();
+    	for(int j=0; j<length; j++) {
+    	    JSONObject mention = mentions.getJSONObject(j);
+    	    //This is where the injectAnnotations of a ImpressoContentItem
+    	    contentItem.injectTokens(mentions, "lang");
+    	}
+    	
 		return contentItem;
 	}
 
 	
-	private static void populateCache(String key, AmazonS3 S3Client) throws IOException {
-  	    GetObjectRequest object_request = new GetObjectRequest(bucketName, key);
+	private static void populateCache(String newspaperKey, String entityKey, AmazonS3 S3Client) throws IOException {
+  	    GetObjectRequest object_request = new GetObjectRequest(bucketName, newspaperKey);
 	    S3Object fullObject = S3Client.getObject(object_request);
 		
 		try (Scanner fileIn = new Scanner(new  BZip2CompressorInputStream(fullObject.getObjectContent()))) {
@@ -144,5 +160,32 @@ public class S3Reader {
             }
         }
         
-  }
+		/*
+		 * WHILE THE ENTITIES ARE BEING DUMPED TO THE S3 BUCKET
+		 * SHOULD NOT EXIST IN THE FINAL IMPLEMENTATION
+		 */
+		
+		if(entityKey != null) {
+	  	    object_request = new GetObjectRequest("TRANSFER", entityKey);
+		    fullObject = S3Client.getObject(object_request);
+			try (Scanner fileIn = new Scanner(new  BZip2CompressorInputStream(fullObject.getObjectContent()))) {
+		    	  //First download the key
+				  // Read the text input stream one line at a as a json object and parse this object into contentitems	      
+				  if (null != fileIn) {
+					  while (fileIn.hasNext()) {
+					      JSONObject jsonObj = new JSONObject(fileIn.nextLine());
+					      entityCache.put(jsonObj.getString("id"), jsonObj);
+					    }
+					}
+				}
+		        finally {
+		            // To ensure that the network connection doesn't remain open, close any open input streams.
+		            if (fullObject != null) {
+		                fullObject.close();
+		            }
+		        }
+		}
+		
+    }
+	
 }

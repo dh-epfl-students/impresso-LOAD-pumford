@@ -32,15 +32,16 @@ public class SolrReader {
 
 	private static final Logger LOGGER = Logger.getLogger(SolrReader.class.getName());
 	private static Properties prop;
+	private static String year = null;
 	
 	
 	public SolrReader(Properties properties) {
 		prop = properties;
 	}
 	
-	public List<String> getContentItemIDs(String newspaperID, boolean firstRead) {
+	public List<String> getContentItemIDs(String newspaperID,String year, boolean firstRead) {
 		List<String> solrIds = new ArrayList<>();
-	    String file = String.format("../%s-ids.txt", newspaperID);
+	    String fileFolder = String.format("../%s-ids", newspaperID);
 		
 		if(firstRead) {
 			HttpSolrClient client = new HttpSolrClient.Builder(prop.getProperty("solrDBName")).build();
@@ -74,26 +75,10 @@ public class SolrReader {
 				    		  .stream()
 				    		  .map(x -> (String) x.get("id"))
 				    		  .collect(Collectors.toList()));
-				    
 				    String nextCursorMark = solrResponse.getNextCursorMark();
 				    if (cursorMark.equals(nextCursorMark)) {
 				        done = true;
 				    }
-				    
-				    try {
-				    	  
-					      FileWriter writer = new FileWriter(file, true);
-					      System.out.println("Beginning to write to file");
-					      for (String id: solrIds) {
-					    	  writer.write(id+ System.lineSeparator());
-					      }
-					      writer.close();
-					      System.out.println("Successfully wrote to the file.");
-					    } catch (IOException e) {
-					      System.out.println("An error occurred.");
-					      e.printStackTrace();
-					    }
-				    
 				    cursorMark = nextCursorMark;
 				}
 	
@@ -102,10 +87,34 @@ public class SolrReader {
 			} catch (IOException e) {
 			    e.printStackTrace();
 			}
+			//Write to the newspaper folder in a text file that is divided by year
+			try {
+				  String prevYear = null, file = null;
+				  FileWriter writer = null;
+		    	  for (String id: solrIds) {
+		    		  String curYear = id.split("-")[1]; //When file is in the format Newspaperid-year, finds second element as year
+		    		  if(!curYear.equals(prevYear)) {
+		    			  if(writer != null) {
+						      System.out.println("Successfully wrote to the file.");
+			    			  writer.close();
+						      System.out.println("Beginning to write to file");
+		    			  }
+		    			  file = String.format("%s/%s.txt", fileFolder, curYear);
+		    			  writer = new FileWriter(file, true);
+		    		  }
+		    		  writer.write(id+ System.lineSeparator());
+		    	  }
+			    } catch (IOException e) {
+			      System.out.println("An error occurred.");
+			      e.printStackTrace();
+			    }
+			
 		}
 		
 		else {
 			try {
+				//When reading from the already read ids
+				String file = String.format("%s/%d", fileFolder, year);
 			    solrIds = new ArrayList<>(Files.readAllLines(Paths.get(file)));
 			}
 			catch (IOException e) {
@@ -136,6 +145,28 @@ public class SolrReader {
 		}
 		
 		return impressoItem;
+	}
+	
+	public void getEntityId(String entityId) {
+		//Test to access entityId
+		HttpSolrClient client = new HttpSolrClient.Builder(prop.getProperty("solrDBName")).build();
+		SolrQuery solrQuery = new SolrQuery();
+		solrQuery.setQuery(entityId);
+		solrQuery.set("fl","*");
+		solrQuery.setRows(1);
+		
+		try {
+		    QueryRequest queryRequest = new QueryRequest(solrQuery);
+		    queryRequest.setBasicAuthCredentials(prop.getProperty("solrUserName"),System.getenv("solrPassword"));
+		    SolrDocumentList solrResponse = queryRequest.process(client).getResults();
+		    System.out.println(solrResponse.get(0)); //Get the only item of the list
+		} catch (SolrServerException e) {
+		    e.printStackTrace();
+		} catch (IOException e) {
+		    e.printStackTrace();
+		}
+		
+		return;
 	}
 		
 }

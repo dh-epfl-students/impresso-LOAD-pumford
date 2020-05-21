@@ -42,9 +42,10 @@ public class ClassTester {
 		}
 			
 		SolrReader reader = new SolrReader(prop);
-
-		List<String> luxwortIds = reader.getContentItemIDs("luxwort", false);
-
+		
+		//reader.getEntityId("aida-0001-54-Italy");
+		List<String> luxwortIds = reader.getContentItemIDs("GDL",null, true);
+		/*
 		//Testing getting the contentId
 		ImpressoContentItem test = reader.getContentItem(luxwortIds.get(4));
 		System.out.println(test.getContent_txt());
@@ -53,7 +54,7 @@ public class ClassTester {
 		test = injector.injectLingusticAnnotations(test);
 		for(Token token: test.getTokens()) {
 			System.out.println(token.getPOS());
-		}
+		}*/
 	}
 
 }
