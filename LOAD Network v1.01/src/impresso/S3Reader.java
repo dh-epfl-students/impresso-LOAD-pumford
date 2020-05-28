@@ -115,10 +115,11 @@ public class S3Reader {
 		JSONObject jsonObj = newspaperCache.getIfPresent(tempId);
     	JSONArray sents = jsonObj.getJSONArray("sents");
     	int length = sents.length();
+    	int totalOffset = 0; //Keeps track of the total offset
     	for(int j=0; j<length; j++) {
     	    JSONObject sentence = sents.getJSONObject(j);
     	    //This is where the injectTokens of a ImpressoContentItem
-    	    contentItem.injectTokens(sentence.getJSONArray("tok"), sentence.getString("lg"));
+    	    totalOffset += contentItem.injectTokens(sentence.getJSONArray("tok"), sentence.getString("lg"), true, totalOffset);
     	}
 
 		/*
@@ -132,7 +133,7 @@ public class S3Reader {
     	for(int j=0; j<length; j++) {
     	    JSONObject mention = mentions.getJSONObject(j);
     	    //This is where the injectAnnotations of a ImpressoContentItem
-    	    contentItem.injectTokens(mentions, "lang");
+    	    contentItem.injectTokens(mentions, null, false, 0);
     	}
     	
 		return contentItem;

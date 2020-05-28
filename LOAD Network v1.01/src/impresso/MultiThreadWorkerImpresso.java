@@ -6,11 +6,15 @@ import static settings.SystemSettings.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 // mongoDB imports
 import org.bson.Document;
+
+import com.amazonaws.services.s3.AmazonS3;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 
@@ -33,24 +37,21 @@ import org.tartarus.snowball.SnowballStemmer;
 public class MultiThreadWorkerImpresso implements Runnable {
     
     private MultiThreadHub hub;
-    private MongoCollection<Document> cANN;
-    private MongoCollection<Document> cSEN;
-    HashSet<String> stopwords;
+    private AmazonS3 S3Client;
+    private Properties prop;
     
     // internal variables
     HashSet<String> invalidTypes;
     private int[] count_ValidAnnotationsByType;
-    private SnowballStemmer stemmer;
     private long count_unaggregatedEdges;
     private int failedCount;
     private int negativeOffsetCount;
     private static Pattern pattern = Pattern.compile(datepattern);
     
-    public MultiThreadWorkerImpresso(MultiThreadHub hub, MongoCollection<Document> cANN, MongoCollection<Document> cSEN, HashSet<String> stopwords) {
+    public MultiThreadWorkerImpresso(MultiThreadHub hub, AmazonS3 S3Client, Properties prop) {
         this.hub = hub;
-        this.cANN = cANN;
-        this.cSEN = cSEN;
-        this.stopwords = stopwords;
+        this.S3Client = S3Client;
+        this.prop = prop;
         
         // internal variables
         invalidTypes = new HashSet<String>();
@@ -59,8 +60,6 @@ public class MultiThreadWorkerImpresso implements Runnable {
         failedCount = 0;
         negativeOffsetCount = 0;
         
-        // stemmer used for stemming terms
-        stemmer = getStemmer(stemmerLanguage);
     }
      
     @Override
@@ -75,20 +74,26 @@ public class MultiThreadWorkerImpresso implements Runnable {
         
         int invalidAnnotationCount = 0;
         int annotationCounter = 0;
-        Integer page_id = null;
+        String newspaper_id = null;
+        String year_id = null;
+        String newspaper_year_id = null;
         
-        
-        while ( (page_id = hub.getPageID()) != null ) {
-        	
+        while ( (newspaper_year_id = hub.getNewspaperID()) != null) {
+        	newspaper_id = newspaper_year_id.split("-")[0];
+        	year_id = newspaper_year_id.split("-")[1];
         	//using content id create impressocontentitem and use this to read from solr, then inject tokens
         	//Each worker will read from a single newspaper/year coordinated by the Hub
         	
             annotationsPage.clear();
             edges.clear();
-             
-            // ensure that cursor cannot time out during write operations
-            MongoCursor<Document> sentenceCursor = cSEN.find(new Document(mongoIdentSentence_pageId, page_id))
-                                                            .noCursorTimeout(true).iterator();
+            
+            //Get all contentIds for the given newspaper/year 
+            SolrReader solrReader = new SolrReader(prop);
+    		
+    		List<String> ids = solrReader.getContentItemIDs(newspaper_id,year_id, false); //replace boolean with 
+            //Create cache with all tokens stored for the newspaper
+            S3Reader S3reader = new S3Reader(newspaper_id, year_id, prop);
+            
             while (sentenceCursor.hasNext()) {
                 annotationsSentence.clear();
                 annotationsTerms.clear();
