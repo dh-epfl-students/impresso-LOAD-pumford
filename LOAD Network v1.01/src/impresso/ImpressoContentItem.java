@@ -2,6 +2,7 @@ package impresso;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -88,6 +89,9 @@ public class ImpressoContentItem {
 		return 0;
 	}
 
+	public void sortTokens() {
+		Collections.sort(tokens);
+	}
 	
 	public String getlanguage() {
 		return language;
@@ -102,4 +106,7 @@ public class ImpressoContentItem {
 		return year;
 	}
 	
+	public List<Token> getTokens(){
+		return tokens;
+	}
 }

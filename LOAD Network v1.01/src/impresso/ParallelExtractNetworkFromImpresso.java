@@ -9,19 +9,34 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 // mongoDB imports
 import org.bson.Document;
+import org.json.JSONObject;
+
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.Protocol;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoCollection;
@@ -46,7 +61,7 @@ import gnu.trove.set.hash.TIntHashSet;
  * (c) 2016 Andreas Spitz (spitz@informatik.uni-heidelberg.de)
  */
 public class ParallelExtractNetworkFromImpresso {
-    
+	
     // hash maps for assigning IDs to nodes (consecutive for each type of entity)
     private ArrayList<TObjectIntHashMap<String>> valueToIdMaps;
     private int[] currentIDs;
@@ -146,19 +161,31 @@ public class ParallelExtractNetworkFromImpresso {
     }
     
     // read the list of all page IDs from an input file that are used to build the network
-    public int[] readPageIDs() {
-        int[] pageIDs = new int[0];
+    public int[][] readContentIDs(HashMap<Integer, String> contentIdtoPageId) {
+        int[][] pageIDs = new int[0][];
         try {
-            TIntArrayList ids = new TIntArrayList();
-            BufferedReader bf = new BufferedReader(new InputStreamReader(new FileInputStream(pageIDList), "UTF-8"));
-            String line;
-            while ((line = bf.readLine()) != null) {
-                ids.add(Integer.parseInt(line));
-            }            
-            bf.close();
+        	final File fileFolder = new File("../");
+        	int newspaper_year_count = 0; int contentItemCount = 0;
+        	//For each newspaper in the file folder, loop through and create an array of ids for 
+        	for (final File newspaper: fileFolder.listFiles()) {
+	            TIntArrayList ids = new TIntArrayList();
+        		if(newspaper.isDirectory()) {
+        			for(final File year: newspaper.listFiles()) {
+        	            BufferedReader bf = new BufferedReader(new InputStreamReader(new FileInputStream(year), "UTF-8"));
+        	            String line;
+        	            while ((line = bf.readLine()) != null) {
+        	            	contentIdtoPageId.put(contentItemCount, line);
+        	                ids.add(contentItemCount);
+        	                contentItemCount ++;
+        	            }            
+        	            bf.close();
+        			}
+        		}
+                pageIDs[newspaper_year_count] = ids.toArray();
+                newspaper_year_count ++;
+        	}
             
             // convert to array of ints
-            pageIDs = ids.toArray();
             
         } catch (Exception e) {
             System.out.println("Problem reading page IDs from file.");
@@ -242,18 +269,23 @@ public class ParallelExtractNetworkFromImpresso {
     public ParallelExtractNetworkFromImpresso() {
         
         // get the IDs of all pages of interest
-        int[] pageIDs;
-        if (readIDsFromFile) {
+    	HashMap<Integer, String> contentIdtoPageId = new HashMap<Integer, String>();
+    	
+    	int[][] pageIDs;
+    	System.out.println("Reading page IDs from file.");
+        pageIDs = readContentIDs(contentIdtoPageId);
+        /*if (readIDsFromFile) {
             System.out.println("Reading page IDs from file.");
-            pageIDs = readPageIDs();
+            pageIDs = readContentIDs(contentIdtoPageId);
         } else {
             System.out.println("Generating page IDs from database.");
             pageIDs = generatePageIDs();
-        }
-        System.out.println("Number of pages with annotations: " + pageIDs.length);
-        count_Articles = pageIDs.length;
+        }*/
+        System.out.println("Number of pages with annotations: " + contentIdtoPageId.size());
+        count_Articles = contentIdtoPageId.size();
         System.gc();
         
+        //Create HashMap based on known number of annotations
         valueToIdMaps = new ArrayList<TObjectIntHashMap<String>>();
         for (int i=0; i<nANNOTATIONS; i++) {
             valueToIdMaps.add(new TObjectIntHashMap<String>());
@@ -265,33 +297,61 @@ public class ParallelExtractNetworkFromImpresso {
             
             Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
             mongoLogger.setLevel(Level.WARNING);
+
+          //Loads the property file
+    		Properties prop=new Properties();
+    		String propFilePath = "../resources/config.properties";
+    		
+    		FileInputStream inputStream;
+    		try {
+    			inputStream = new FileInputStream(propFilePath);
+    			prop.load(inputStream);
+    			inputStream.close();
+    			
+    		} catch (IOException e1) {
+    			e1.printStackTrace();
+    		}
+    		
+            String accessKey = System.getenv("s3Accesskey");
+    		String secretKey = System.getenv("s3Secretkey");
+    		int readTimeout = 100000; //Doubles default timeout
+    		
+    		AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
+    		
+    		// Set S3 Client Endpoint
+
+            AwsClientBuilder.EndpointConfiguration switchEndpoint = new AwsClientBuilder.EndpointConfiguration(
+                    prop.getProperty("s3BaseName"),"");
             
-            ServerAddress address = new ServerAddress(MongoAdress, MongoPort);
-            MongoClient mongoClient;
-            if (mongocred != null) {
-                mongoClient = new MongoClient(address, Arrays.asList(mongocred));
-            } else {
-                mongoClient = new MongoClient(address);
-            }
-            MongoDatabase db = mongoClient.getDatabase(MongoDBname);
-            MongoCollection<Document> cANN = db.getCollection(MongoCollectionAnnotations);
-            MongoCollection<Document> cSEN = db.getCollection(MongoCollectionSentences);
+        	// Set signer type and http scheme
+            ClientConfiguration conf = new ClientConfiguration();
+            	    conf.setSignerOverride("S3SignerType");
+            	    conf.setSocketTimeout(readTimeout);
+    		        conf.setProtocol(Protocol.HTTPS);
+                    
+            AmazonS3 S3Client = AmazonS3ClientBuilder.standard()
+                    .withEndpointConfiguration(switchEndpoint)
+                    .withCredentials(new AWSStaticCredentialsProvider(credentials))
+                    .withClientConfiguration(conf)
+                    .withPathStyleAccessEnabled(true)
+                    .build();
             
-            System.out.println("Number of sentences overall: " + cSEN.count());
-            count_Sentences = (int) cSEN.count();
-            System.out.println("Number of annotations overall: " + cANN.count());
-            count_Annotations = (int) cANN.count();
+            //Instantiating SolrReader
+            SolrReader solrReader = new SolrReader(prop);
             
+            //Caches of tokens and entities created with size limits
+        	Cache<String, JSONObject> newspaperCache = CacheBuilder.newBuilder().maximumSize(10000).build();
+        	Cache<String, JSONObject> entityCache = CacheBuilder.newBuilder().maximumSize(10000).build();
+
             System.out.println("Parsing annotations and extracting network");
             
-            HashSet<String> stopwords = readStopWords();
             HashSet<String> invalidTypes = new HashSet<String>();
             
-            MultiThreadHub hub = new MultiThreadHub(pageIDs, valueToIdMaps, currentIDs, ew, nThreads);
+            MultiThreadHubImpresso hub = new MultiThreadHubImpresso(pageIDs, valueToIdMaps, currentIDs, S3Client, newspaperCache, entityCache, prop, contentIdtoPageId, ew, nThreads);
             
             ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
             for (int i=0; i<nThreads; i++) {
-                MultiThreadWorker w = new MultiThreadWorker(hub, cANN, cSEN, stopwords);
+                MultiThreadWorkerImpresso w = new MultiThreadWorkerImpresso(hub, prop, solrReader, newspaperCache, entityCache, contentIdtoPageId);
                 executor.execute(w);
             }
             executor.shutdown();
@@ -307,7 +367,6 @@ public class ParallelExtractNetworkFromImpresso {
             }
                         
             ew.close();
-            mongoClient.close();
             System.out.println();
             
             count_ValidAnnotations = hub.getValidAnnotations();

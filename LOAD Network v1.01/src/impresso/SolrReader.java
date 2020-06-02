@@ -111,7 +111,7 @@ public class SolrReader {
 			
 		}
 		
-		else {
+		else if(newspaperID != null && year != null) {
 			try {
 				//When reading from the already read ids
 				String file = String.format("%s/%d", fileFolder, year);
@@ -121,6 +121,7 @@ public class SolrReader {
 			    // Handle a potential exception
 			}
 		}
+			
 		return solrIds;
 
 	}
